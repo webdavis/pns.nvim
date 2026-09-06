@@ -1,0 +1,221 @@
+*pns.txt*                 Report a finished editor task to the pns engine
+
+==============================================================================
+CONTENTS                                                        *pns-contents*
+
+  1. Introduction ....... |pns-introduction|
+  2. Requirements ....... |pns-requirements|
+  3. Install ............ |pns-install|
+  4. Options ............ |pns-options|
+  5. Integrations ....... |pns-integrations|
+  6. What reaches pns ... |pns-argv|
+  7. Version handshake .. |pns-handshake|
+  8. Lua API ............ |pns-api|
+  9. Health ............. |pns-health|
+
+==============================================================================
+1. INTRODUCTION                                             *pns-introduction*
+
+Tell pns when a slow build or test run in Neovim has finished, so the
+notification reaches you wherever you went while it ran.
+
+pns is a notification engine. Producers hand it a finished piece of work and
+it decides what that deserves: a banner in the terminal, a card in Discord, a
+push to a phone when you are away from the desk, and a colour on the lights
+when the wait was long. A shell already reports to it that way. This plugin
+makes the editor a producer too.
+
+The plugin carries no duration thresholds. It states how long the work took
+and lets pns apply the one rule it already applies to every other producer,
+so one program owns the rule instead of every producer keeping a copy.
+
+==============================================================================
+2. REQUIREMENTS                                             *pns-requirements*
+
+- Neovim with |vim.system()|, |vim.uv|, |vim.fs| and |vim.health|. Developed
+  and tested on 0.12.5.
+- pns, new enough to accept `--elapsed`. See |pns-handshake|.
+- Optionally overseer.nvim, xcodebuild.nvim and neotest. Each has a built-in
+  integration, and each one is inert when its plugin is not installed.
+
+==============================================================================
+3. INSTALL                                                       *pns-install*
+
+With lazy.nvim: >lua
+
+    {
+      "webdavis/pns.nvim",
+      opts = {},
+    }
+<
+`opts = {}` is enough. It calls |pns.setup()|, which is what arms the
+xcodebuild integration.
+
+On a machine where pns is not on `PATH`, name it: >lua
+
+    {
+      "webdavis/pns.nvim",
+      opts = { binary = "~/.local/libexec/pns/pns" },
+    }
+<
+==============================================================================
+4. OPTIONS                                                       *pns-options*
+
+                                                          *pns-option-binary*
+binary                  The engine to run, `"pns"` by default. A bare name is
+                        looked up on `PATH`; a path is expanded, so `~` works.
+
+                                                           *pns-option-agent*
+agent                   The producer name pns records against every report,
+                        `"nvim"` by default.
+
+                                                         *pns-option-project*
+project                 Overrides the working directory's basename. Unset by
+                        default.
+
+                                                            *pns-option-pane*
+pane                    Overrides `$HERDR_PANE_ID`. Unset by default.
+
+                                                 *pns-option-minimum_version*
+minimum_version         The oldest pns |:checkhealth| accepts, `"0.2.0"` by
+                        default. See |pns-handshake|.
+
+`project` and `pane` are read when a report is made rather than when
+|pns.setup()| runs, so one Neovim serving several directories still names the
+right one.
+
+==============================================================================
+5. INTEGRATIONS                                             *pns-integrations*
+
+Three tools have a built-in integration. Each reports once, timed by the
+tool's own start and finish events, on a monotonic clock so a machine that
+changes its time mid-build cannot produce a nonsense duration.
+
+OVERSEER.NVIM                                              *pns-overseer*
+
+A component. overseer resolves a component by name off the runtimepath, so
+add `"pns.report"` to the alias its tasks already use: >lua
+
+    require("overseer").setup({
+      component_aliases = {
+        default = {
+          "on_exit_set_status",
+          "on_complete_notify",
+          { "on_complete_dispose", require_view = { "SUCCESS", "FAILURE" } },
+          "pns.report",
+        },
+      },
+    })
+<
+A task that succeeds reports `done`, one that fails reports `failed`, and one
+you cancelled reports nothing, since you were at the keyboard when you
+cancelled it.
+
+Under lazy.nvim, make `pns.nvim` a dependency of your overseer spec so its
+runtimepath entry is there when overseer looks the component up.
+
+XCODEBUILD.NVIM                                            *pns-xcodebuild*
+
+There is nothing to wire. |pns.setup()| listens for the four `User`
+autocommands xcodebuild fires, and reports a build or a test run when it ends.
+
+Running tests builds first, so one keystroke fires both pairs of events. A
+successful build for testing reports nothing of its own and hands its start
+time to the test run, so you get one report covering the whole wait rather
+than two covering half of it each. A build that fails is reported on its own,
+because the tests never ran.
+
+NEOTEST                                                       *pns-neotest*
+
+A consumer, named in neotest's own setup: >lua
+
+    require("neotest").setup({
+      consumers = {
+        pns = require("pns.integrations.neotest").consumer,
+      },
+    })
+<
+A run reports `failed` when any result failed and `done` otherwise. A skipped
+test is neither. Partial results are ignored while they are still streaming
+in, so a run is reported once.
+
+==============================================================================
+6. WHAT REACHES PNS                                                 *pns-argv*
+
+One process per report, spawned with argv rather than a shell string, and
+never waited on: >
+
+    pns --agent nvim --state done --project dotfiles \
+        --detail "overseer: just test-unit" --elapsed 42 --pane %7
+<
+`--project` and `--pane` are left out when there is nothing to put in them,
+since an empty pane id is a pane pns will never find. The other flags are
+always present.
+
+The plugin hides neither kind of failure. A binary that is not there, and a
+binary that exits non-zero, each raise one |vim.notify()| at `WARN` naming the
+cause. Each cause warns once for the life of the session, so a broken engine
+cannot turn every finished task into a fresh notification.
+
+==============================================================================
+7. VERSION HANDSHAKE                                           *pns-handshake*
+
+The plugin and the engine are separate programs on separate release
+schedules, so the flags one emits and the flags the other accepts can drift.
+The plugin declares the oldest pns it works against, |:checkhealth| reads
+`pns --version` and compares, and a mismatch is reported there rather than
+discovered as a rejected flag on every build.
+
+The default minimum is `0.2.0`, which is provisional: at the time of writing
+pns has not yet released the version that adds `--elapsed`, and it answers
+`--version` with its usage text and exit code 2. Set the option
+|pns-option-minimum_version| to the release that ships the flag once it
+exists.
+
+The handshake runs only in the health check. Reporting never probes the
+engine's version, because the answer cannot change while Neovim is running
+and the reporting path has to stay out of the way.
+
+==============================================================================
+8. LUA API                                                           *pns-api*
+
+                                                               *pns.setup()*
+setup({opts})           Merge {opts} over the defaults in |pns-options| and
+                        arm the xcodebuild integration. Optional: the plugin
+                        works without it, on its defaults, minus that one
+                        integration.
+
+                                                              *pns.report()*
+report({report})        Report one finished task. {report} is a table:
+
+                        `state`     "done" or "failed". Required.
+                        `detail`    what finished, as "<tool>: <task>".
+                        `elapsed`   how long it took, in seconds.
+                        `project`   optional, overrides the default.
+                        `pane`      optional, overrides the default.
+
+                        Returns true once the process is on its way. Returns
+                        false and a reason without spawning anything when the
+                        state is neither "done" nor "failed", or when the
+                        duration is not a number of seconds. Fractions are
+                        rounded down, so anything under a second reports as
+                        zero.
+
+                        Call it from anywhere. A fourth tool needs a call,
+                        not a fourth copy of the command line. >lua
+
+    require("pns").report({
+      state = "done",
+      detail = "overseer: just test-unit",
+      elapsed = 42,
+    })
+<
+==============================================================================
+9. HEALTH                                                         *pns-health*
+
+`:checkhealth pns` reports whether the binary was found, what version it
+answered with, whether that meets |pns-option-minimum_version|, and for each
+of the three host plugins whether it is installed and how its integration is
+wired.
+
+vim:tw=78:ts=8:ft=help:norl:
