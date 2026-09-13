@@ -28,7 +28,7 @@ M.options = {
   agent = "nvim",
   project = nil,
   pane = nil,
-  minimum_version = "0.2.0",
+  minimum_version = "0.1.0",
 }
 
 --- Causes already reported, so a failing engine warns once instead of once per

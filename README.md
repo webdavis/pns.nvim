@@ -15,7 +15,8 @@ every producer keeping a copy.
 ## Requirements
 
 - Neovim with `vim.system`, `vim.uv`, `vim.fs` and `vim.health`. Developed and tested on 0.12.5.
-- pns, new enough to accept `--elapsed`. See [the version handshake](#the-version-handshake) below.
+- pns 0.1.0 or newer, with `--version` and `--elapsed` support.
+  See [the version handshake](#the-version-handshake) below.
 - Optionally [overseer.nvim](https://github.com/stevearc/overseer.nvim),
   [xcodebuild.nvim](https://github.com/wojciech-kulik/xcodebuild.nvim) and
   [neotest](https://github.com/nvim-neotest/neotest). Each has a built-in integration, and each one
@@ -51,7 +52,7 @@ On a machine where pns is not on `PATH`, name it:
 | `agent`           | `"nvim"`  | The producer name pns records against every report.       |
 | `project`         | unset     | Overrides the working directory's basename.               |
 | `pane`            | unset     | Overrides `$HERDR_PANE_ID`.                               |
-| `minimum_version` | `"0.2.0"` | The oldest pns `:checkhealth pns` accepts.                |
+| `minimum_version` | `"0.1.0"` | The oldest pns `:checkhealth pns` accepts.                |
 
 `project` and `pane` are read when a report is made rather than when `setup` runs, so one Neovim
 serving several directories still names the right one.
@@ -133,9 +134,8 @@ and the flags the other accepts can drift. The plugin declares the oldest pns it
 `:checkhealth pns` reads `pns --version` and compares, and a mismatch is reported there rather than
 discovered as a rejected flag on every build.
 
-The default minimum is `0.2.0`, which is provisional: at the time of writing pns has not yet released
-the version that adds `--elapsed`, and it answers `--version` with its usage text and exit code 2.
-Set `minimum_version` to the release that ships the flag once it exists.
+The default minimum is `0.1.0`, which supports `--version` and the producer flags above, including
+`--elapsed`. Set `minimum_version` when you need to require a newer engine.
 
 The handshake runs only in the health check. Reporting never probes the engine's version, because the
 answer cannot change while Neovim is running and the reporting path has to stay out of the way.
