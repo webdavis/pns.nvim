@@ -34,7 +34,7 @@ so one program owns the rule instead of every producer keeping a copy.
 
 - Neovim with |vim.system()|, |vim.uv|, |vim.fs| and |vim.health|. Developed
   and tested on 0.12.5.
-- pns 0.1.0 or newer, with `--version` and `--elapsed` support.
+- pns 0.2.0 or newer, with `--version`, `--elapsed` and the `send` subcommand.
   See |pns-handshake|.
 - Optionally overseer.nvim, xcodebuild.nvim and neotest. Each has a built-in
   integration, and each one is inert when its plugin is not installed.
@@ -78,7 +78,7 @@ project                 Overrides the working directory's basename. Unset by
 pane                    Overrides `$HERDR_PANE_ID`. Unset by default.
 
                                                  *pns-option-minimum_version*
-minimum_version         The oldest pns |:checkhealth| accepts, `"0.1.0"` by
+minimum_version         The oldest pns |:checkhealth| accepts, `"0.2.0"` by
                         default. See |pns-handshake|.
 
 `project` and `pane` are read when a report is made rather than when
@@ -167,9 +167,9 @@ The plugin declares the oldest pns it works against, |:checkhealth| reads
 `pns --version` and compares, and a mismatch is reported there rather than
 discovered as a rejected flag on every build.
 
-The default minimum is `0.1.0`, which supports `--version` and the producer
-flags above, including `--elapsed`. Set |pns-option-minimum_version| when you
-need to require a newer engine.
+The default minimum is `0.2.0`, which supports `--version`, the producer
+flags above and the `send` subcommand every report now names. Set
+|pns-option-minimum_version| when you need to require a newer engine.
 
 The handshake runs only in the health check. Reporting never probes the
 engine's version, because the answer cannot change while Neovim is running

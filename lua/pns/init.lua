@@ -28,7 +28,7 @@ M.options = {
   agent = "nvim",
   project = nil,
   pane = nil,
-  minimum_version = "0.1.0",
+  minimum_version = "0.2.0",
 }
 
 --- Causes already reported, so a failing engine warns once instead of once per
@@ -133,7 +133,10 @@ function M.report(report)
 
   -- The flag order pns's own usage lists. Kept fixed so a command line read out
   -- of a log matches the one in the documentation.
-  local argv = { binary }
+  --
+  -- `send` names the subcommand: pns 0.2.0 dropped the bare, subcommand-less
+  -- producer argv this used to spawn.
+  local argv = { binary, "send" }
   append(argv, "--agent", M.options.agent)
   append(argv, "--state", state)
   append(argv, "--project", report.project or M.options.project or vim.fs.basename(vim.uv.cwd() or ""))
