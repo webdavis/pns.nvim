@@ -117,7 +117,7 @@ results are ignored while they are still streaming in, so a run is reported once
 One process per report, spawned with argv rather than a shell string, and never waited on:
 
 ```
-pns --agent nvim --state done --project dotfiles --detail "overseer: just test-unit" --elapsed 42 --pane %7
+pns --producer nvim --state done --project dotfiles --detail "overseer: just test-unit" --elapsed 42s --pane %7
 ```
 
 `--project` and `--pane` are left out when there is nothing to put in them, since an empty pane id is
