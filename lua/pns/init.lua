@@ -100,7 +100,7 @@ end
 ---@class pns.Report
 ---@field state "done"|"failed"
 ---@field detail string what finished, as `"<tool>: <task>"`
----@field elapsed number how long it took, in seconds
+---@field elapsed number how long it took, in seconds; pns is told the duration
 ---@field project string? overrides the option and the working directory
 ---@field pane string? overrides the option and $HERDR_PANE_ID
 ---
@@ -134,11 +134,11 @@ function M.report(report)
   -- The flag order pns's own usage lists. Kept fixed so a command line read out
   -- of a log matches the one in the documentation.
   local argv = { binary }
-  append(argv, "--agent", M.options.agent)
+  append(argv, "--producer", M.options.agent)
   append(argv, "--state", state)
   append(argv, "--project", report.project or M.options.project or vim.fs.basename(vim.uv.cwd() or ""))
   append(argv, "--detail", report.detail)
-  append(argv, "--elapsed", math.floor(elapsed))
+  append(argv, "--elapsed", math.floor(elapsed) .. "s")
   append(argv, "--pane", report.pane or M.options.pane or vim.env.HERDR_PANE_ID)
 
   -- `vim.system` RAISES on a binary that is not there (measured on 0.12.5:

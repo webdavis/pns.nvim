@@ -97,7 +97,7 @@ return {
     assert(#commands == 1, "one process was spawned")
     assert_command(commands[1], {
       "pns",
-      "--agent",
+      "--producer",
       "nvim",
       "--state",
       "done",
@@ -106,7 +106,7 @@ return {
       "--detail",
       "overseer: build",
       "--elapsed",
-      "42",
+      "42s",
       "--pane",
       "%7",
     })
@@ -119,7 +119,7 @@ return {
 
     assert_command(commands[1], {
       "pns",
-      "--agent",
+      "--producer",
       "nvim",
       "--state",
       "failed",
@@ -128,7 +128,7 @@ return {
       "--detail",
       "neotest: init_spec.lua",
       "--elapsed",
-      "7",
+      "7s",
       "--pane",
       "%7",
     })
@@ -142,14 +142,14 @@ return {
 
       assert_command(commands[1], {
         "pns",
-        "--agent",
+        "--producer",
         "nvim",
         "--state",
         "done",
         "--detail",
         "overseer: build",
         "--elapsed",
-        "42",
+        "42s",
       })
     end)
   end,
@@ -195,7 +195,7 @@ return {
       pns.report({ state = "done", detail = "overseer: build", elapsed = 42.9 })
     end)
 
-    assert(commands[1][11] == "42", "the seconds were floored: " .. commands[1][11])
+    assert(commands[1][11] == "42s", "the seconds were floored: " .. commands[1][11])
   end,
 
   ["refuses a duration that is not a number, and spawns nothing"] = function()
