@@ -97,6 +97,7 @@ return {
     assert(#commands == 1, "one process was spawned")
     assert_command(commands[1], {
       "pns",
+      "send",
       "--producer",
       "nvim",
       "--state",
@@ -119,6 +120,7 @@ return {
 
     assert_command(commands[1], {
       "pns",
+      "send",
       "--producer",
       "nvim",
       "--state",
@@ -142,6 +144,7 @@ return {
 
       assert_command(commands[1], {
         "pns",
+        "send",
         "--producer",
         "nvim",
         "--state",
@@ -161,8 +164,8 @@ return {
       end)
 
       local argv = commands[1]
-      assert(argv[7] == vim.fs.basename(vim.uv.cwd()), "the project is the working directory's name: " .. argv[7])
-      assert(argv[13] == "%12", "the pane came from HERDR_PANE_ID: " .. tostring(argv[13]))
+      assert(argv[8] == vim.fs.basename(vim.uv.cwd()), "the project is the working directory's name: " .. argv[8])
+      assert(argv[14] == "%12", "the pane came from HERDR_PANE_ID: " .. tostring(argv[14]))
     end)
   end,
 
@@ -173,8 +176,8 @@ return {
       end)
 
       local argv = commands[1]
-      assert(argv[7] == "from-call", "the call's project won: " .. argv[7])
-      assert(argv[13] == "%1", "the call's pane won: " .. argv[13])
+      assert(argv[8] == "from-call", "the call's project won: " .. argv[8])
+      assert(argv[14] == "%1", "the call's pane won: " .. argv[14])
     end)
   end,
 
@@ -195,7 +198,7 @@ return {
       pns.report({ state = "done", detail = "overseer: build", elapsed = 42.9 })
     end)
 
-    assert(commands[1][11] == "42s", "the seconds were floored: " .. commands[1][11])
+    assert(commands[1][12] == "42s", "the seconds were floored: " .. commands[1][12])
   end,
 
   ["refuses a duration that is not a number, and spawns nothing"] = function()

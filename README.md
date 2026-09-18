@@ -15,7 +15,7 @@ every producer keeping a copy.
 ## Requirements
 
 - Neovim with `vim.system`, `vim.uv`, `vim.fs` and `vim.health`. Developed and tested on 0.12.5.
-- pns 0.1.0 or newer, with `--version` and `--elapsed` support.
+- pns 0.2.0 or newer, with `--version`, `--elapsed` and the `send` subcommand.
   See [the version handshake](#the-version-handshake) below.
 - Optionally [overseer.nvim](https://github.com/stevearc/overseer.nvim),
   [xcodebuild.nvim](https://github.com/wojciech-kulik/xcodebuild.nvim) and
@@ -52,7 +52,7 @@ On a machine where pns is not on `PATH`, name it:
 | `agent`           | `"nvim"`  | The producer name pns records against every report.       |
 | `project`         | unset     | Overrides the working directory's basename.               |
 | `pane`            | unset     | Overrides `$HERDR_PANE_ID`.                               |
-| `minimum_version` | `"0.1.0"` | The oldest pns `:checkhealth pns` accepts.                |
+| `minimum_version` | `"0.2.0"` | The oldest pns `:checkhealth pns` accepts.                |
 
 `project` and `pane` are read when a report is made rather than when `setup` runs, so one Neovim
 serving several directories still names the right one.
@@ -134,8 +134,8 @@ and the flags the other accepts can drift. The plugin declares the oldest pns it
 `:checkhealth pns` reads `pns --version` and compares, and a mismatch is reported there rather than
 discovered as a rejected flag on every build.
 
-The default minimum is `0.1.0`, which supports `--version` and the producer flags above, including
-`--elapsed`. Set `minimum_version` when you need to require a newer engine.
+The default minimum is `0.2.0`, which supports `--version`, the producer flags above and the `send`
+subcommand every report now names. Set `minimum_version` when you need to require a newer engine.
 
 The handshake runs only in the health check. Reporting never probes the engine's version, because the
 answer cannot change while Neovim is running and the reporting path has to stay out of the way.

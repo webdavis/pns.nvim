@@ -17,10 +17,10 @@ local function assert_version(output, expected)
 end
 
 return {
-  ["accepts pns 0.1.0 with the default minimum"] = function()
+  ["accepts pns 0.2.0 with the default minimum"] = function()
     local pns = require("pns")
     local binary = vim.fn.tempname()
-    vim.fn.writefile({ "#!/bin/sh", "printf '%s\\n' '0.1.0'" }, binary)
+    vim.fn.writefile({ "#!/bin/sh", "printf '%s\\n' '0.2.0'" }, binary)
     vim.fn.setfperm(binary, "rwx------")
 
     local real_options, real_health = pns.options, vim.health
@@ -44,7 +44,7 @@ return {
     assert(ok, err)
     assert(#errors == 0, table.concat(errors, "\n"))
     assert(
-      vim.tbl_contains(accepted, "pns 0.1.0 meets the minimum of 0.1.0"),
+      vim.tbl_contains(accepted, "pns 0.2.0 meets the minimum of 0.2.0"),
       "the health check did not accept the supported engine: " .. vim.inspect(accepted)
     )
   end,
