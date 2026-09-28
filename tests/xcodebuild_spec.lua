@@ -1,7 +1,7 @@
 local harness = require("integration_harness")
 local xcodebuild = require("pns.integrations.xcodebuild")
 
-local recorded, assert_report = harness.recorded, harness.assert_report
+local reports_requested, assert_report = harness.reports_requested, harness.assert_report
 
 return {
   ["xcodebuild is armed once however many times setup runs"] = function()
@@ -34,9 +34,9 @@ return {
   end,
 
   ["xcodebuild reports a plain build from started to finished"] = function()
-    local reports = recorded(function(tick)
+    local reports = reports_requested(function(advance_seconds)
       xcodebuild.build_started()
-      tick(95)
+      advance_seconds(95)
       xcodebuild.build_finished({ data = { forTesting = false, success = true, cancelled = false } })
     end)
 
@@ -44,9 +44,9 @@ return {
   end,
 
   ["xcodebuild reports a build that failed as failed"] = function()
-    local reports = recorded(function(tick)
+    local reports = reports_requested(function(advance_seconds)
       xcodebuild.build_started()
-      tick(8)
+      advance_seconds(8)
       xcodebuild.build_finished({ data = { forTesting = false, success = false, cancelled = false } })
     end)
 
@@ -54,9 +54,9 @@ return {
   end,
 
   ["xcodebuild says nothing about a build the operator cancelled"] = function()
-    local reports = recorded(function(tick)
+    local reports = reports_requested(function(advance_seconds)
       xcodebuild.build_started()
-      tick(40)
+      advance_seconds(40)
       xcodebuild.build_finished({ data = { forTesting = true, success = false, cancelled = true } })
     end)
 
@@ -64,12 +64,12 @@ return {
   end,
 
   ["xcodebuild folds a test run's build into one report covering both"] = function()
-    local reports = recorded(function(tick)
+    local reports = reports_requested(function(advance_seconds)
       xcodebuild.build_started()
-      tick(30)
+      advance_seconds(30)
       xcodebuild.build_finished({ data = { forTesting = true, success = true, cancelled = false } })
       xcodebuild.tests_started()
-      tick(12)
+      advance_seconds(12)
       xcodebuild.tests_finished({ data = { passedCount = 40, failedCount = 0, cancelled = false } })
     end)
 
@@ -78,9 +78,9 @@ return {
   end,
 
   ["xcodebuild reports the build when a test run cannot get past it"] = function()
-    local reports = recorded(function(tick)
+    local reports = reports_requested(function(advance_seconds)
       xcodebuild.build_started()
-      tick(30)
+      advance_seconds(30)
       xcodebuild.build_finished({ data = { forTesting = true, success = false, cancelled = false } })
     end)
 
@@ -88,9 +88,9 @@ return {
   end,
 
   ["xcodebuild reports a test run with a failure as failed"] = function()
-    local reports = recorded(function(tick)
+    local reports = reports_requested(function(advance_seconds)
       xcodebuild.tests_started()
-      tick(17)
+      advance_seconds(17)
       xcodebuild.tests_finished({ data = { passedCount = 38, failedCount = 2, cancelled = false } })
     end)
 
@@ -98,7 +98,7 @@ return {
   end,
 
   ["xcodebuild says nothing about a finish it never saw start"] = function()
-    local reports = recorded(function()
+    local reports = reports_requested(function()
       xcodebuild.tests_finished({ data = { passedCount = 1, failedCount = 0, cancelled = false } })
       xcodebuild.build_finished({ data = { forTesting = false, success = true, cancelled = false } })
     end)
@@ -107,19 +107,17 @@ return {
   end,
 
   ["xcodebuild lets a new build supersede a test start it carried forward"] = function()
-    local reports = recorded(function(tick)
+    local reports = reports_requested(function(advance_seconds)
       xcodebuild.build_started()
-      tick(300)
+      advance_seconds(300)
       xcodebuild.build_finished({ data = { forTesting = true, success = true, cancelled = false } })
 
-      -- The test run never happens. The next build must not hand its stale
-      -- start to a later one.
       xcodebuild.build_started()
-      tick(5)
+      advance_seconds(5)
       xcodebuild.build_finished({ data = { forTesting = false, success = true, cancelled = false } })
 
       xcodebuild.tests_started()
-      tick(3)
+      advance_seconds(3)
       xcodebuild.tests_finished({ data = { passedCount = 1, failedCount = 0, cancelled = false } })
     end)
 

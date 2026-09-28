@@ -1,10 +1,3 @@
--- The version handshake: reading a version out of whatever the engine prints,
--- and deciding whether it is new enough.
---
--- This is the half of `:checkhealth pns` that has a right answer. The rest of
--- the check reports what it found through `vim.health`, which is Neovim's to
--- render.
-
 local health = require("pns.health")
 
 local function assert_version(output, expected)
@@ -82,7 +75,6 @@ return {
   end,
 
   ["compares each number rather than the text around it"] = function()
-    -- The case a string comparison gets wrong, and the reason this is not one.
     assert(health.at_least({ 0, 10, 0 }, { 0, 9, 0 }), "0.10.0 is newer than 0.9.0")
     assert(not health.at_least({ 0, 9, 0 }, { 0, 10, 0 }), "0.9.0 is older than 0.10.0")
   end,

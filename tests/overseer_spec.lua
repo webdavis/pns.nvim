@@ -1,20 +1,19 @@
 local harness = require("integration_harness")
 local overseer = require("pns.integrations.overseer")
 
-local recorded, assert_report = harness.recorded, harness.assert_report
+local reports_requested, assert_report = harness.reports_requested, harness.assert_report
 
---- An overseer component instance, built the way overseer builds one.
-local function component()
+local function new_component()
   return overseer.component.constructor({})
 end
 
 return {
   ["overseer reports a successful task as done, timed from its start"] = function()
-    local reports = recorded(function(tick)
-      local task = component()
+    local reports = reports_requested(function(advance_seconds)
+      local task = new_component()
 
       task:on_start()
-      tick(35)
+      advance_seconds(35)
       task:on_complete({ name = "just test-unit" }, "SUCCESS")
     end)
 
@@ -22,11 +21,11 @@ return {
   end,
 
   ["overseer reports a failed task as failed"] = function()
-    local reports = recorded(function(tick)
-      local task = component()
+    local reports = reports_requested(function(advance_seconds)
+      local task = new_component()
 
       task:on_start()
-      tick(12)
+      advance_seconds(12)
       task:on_complete({ name = "just lint-check" }, "FAILURE")
     end)
 
@@ -34,11 +33,11 @@ return {
   end,
 
   ["overseer says nothing about a task the operator cancelled"] = function()
-    local reports = recorded(function(tick)
-      local task = component()
+    local reports = reports_requested(function(advance_seconds)
+      local task = new_component()
 
       task:on_start()
-      tick(60)
+      advance_seconds(60)
       task:on_complete({ name = "just test" }, "CANCELED")
     end)
 
@@ -46,8 +45,8 @@ return {
   end,
 
   ["overseer says nothing about a task that completed without starting"] = function()
-    local reports = recorded(function()
-      component():on_complete({ name = "just test" }, "SUCCESS")
+    local reports = reports_requested(function()
+      new_component():on_complete({ name = "just test" }, "SUCCESS")
     end)
 
     assert(#reports == 0, "a task with no start reported nothing, not " .. #reports)

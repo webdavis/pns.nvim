@@ -185,6 +185,16 @@ nvim --headless --clean -l tests/run.lua
 `--clean` matters. None of the three host plugins is on the runtimepath, and none needs to be: each
 integration is driven by exactly what its host would pass it.
 
+Name one spec to run only that file:
+
+```bash
+nvim --headless --clean -l tests/run.lua report_spec
+```
+
+Each `tests/*_spec.lua` returns a table of `["what it does"] = function() ... end` cases that assert
+with plain `assert`, with no plenary or busted. The runner reports them in sorted order, and fails
+when no spec matches or a spec returns no cases.
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
