@@ -19,18 +19,18 @@ local xcodebuild = require("pns.integrations.xcodebuild")
 --- back however `body` ends.
 ---@return table[] reports
 local function recorded(body)
-  local real_pns, real_now = package.loaded["pns"], clock.now
+  local real_pns, real_now = package.loaded["pns"], clock.monotonic_nanoseconds
   local reports = {}
   local nanoseconds = 0
 
-  xcodebuild.started = { build = nil, tests = nil }
+  xcodebuild.started_at = { build = nil, tests = nil }
   package.loaded["pns"] = {
     report = function(report)
       reports[#reports + 1] = report
       return true
     end,
   }
-  clock.now = function()
+  clock.monotonic_nanoseconds = function()
     return nanoseconds
   end
 
@@ -41,8 +41,8 @@ local function recorded(body)
   local ok, err = pcall(body, tick)
 
   package.loaded["pns"] = real_pns
-  clock.now = real_now
-  xcodebuild.started = { build = nil, tests = nil }
+  clock.monotonic_nanoseconds = real_now
+  xcodebuild.started_at = { build = nil, tests = nil }
 
   if not ok then
     error(err, 0)
