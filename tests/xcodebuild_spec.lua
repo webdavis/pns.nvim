@@ -4,6 +4,35 @@ local xcodebuild = require("pns.integrations.xcodebuild")
 local recorded, assert_report = harness.recorded, harness.assert_report
 
 return {
+  ["xcodebuild is armed once however many times setup runs"] = function()
+    local pns = require("pns")
+    local real_xcodebuild, real_options = package.loaded["xcodebuild"], pns.options
+    package.loaded["xcodebuild"] = {}
+
+    local ok, err = pcall(function()
+      pns.setup()
+      pns.setup()
+
+      local autocommands = vim.api.nvim_get_autocmds({ group = xcodebuild.GROUP })
+      assert(#autocommands == 4, "four autocommands after two setups, not " .. #autocommands)
+    end)
+
+    package.loaded["xcodebuild"], pns.options = real_xcodebuild, real_options
+    pcall(vim.api.nvim_del_augroup_by_name, xcodebuild.GROUP)
+
+    if not ok then
+      error(err, 0)
+    end
+  end,
+
+  ["xcodebuild stays unarmed when xcodebuild.nvim is not installed"] = function()
+    assert(xcodebuild.arm() == false, "arming reported success without xcodebuild.nvim")
+    assert(
+      not pcall(vim.api.nvim_get_autocmds, { group = xcodebuild.GROUP }),
+      "the autocommand group exists without xcodebuild.nvim"
+    )
+  end,
+
   ["xcodebuild reports a plain build from started to finished"] = function()
     local reports = recorded(function(tick)
       xcodebuild.build_started()

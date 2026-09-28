@@ -50,6 +50,19 @@ return {
     assert(#reports == 0, "a partial result reported nothing, not " .. #reports)
   end,
 
+  ["neotest says nothing about a run that produced no results"] = function()
+    local reports = recorded(function(tick)
+      local events = client()
+
+      neotest.consumer(events)
+      events.listeners.run(1, "/Users/x/project/tests/report_spec.lua", {})
+      tick(3)
+      events.listeners.results(1, {}, false)
+    end)
+
+    assert(#reports == 0, "an empty run reported nothing, not " .. #reports)
+  end,
+
   ["neotest says nothing about results with no run behind them"] = function()
     local reports = recorded(function()
       local events = client()

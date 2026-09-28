@@ -214,6 +214,42 @@ return {
     assert(notices[1]:find("elapsed", 1, true), "the warning names the field: " .. notices[1])
   end,
 
+  ["accepts a duration given as a string of seconds"] = function()
+    local commands = captured({ project = "dotfiles" }, function()
+      assert(pns.report({ state = "done", detail = "overseer: build", elapsed = "42" }))
+    end)
+
+    assert(commands[1][12] == "42s", "the string was read as seconds: " .. tostring(commands[1][12]))
+  end,
+
+  ["refuses an infinite or not-a-number duration"] = function()
+    local commands = captured({}, function()
+      for _, elapsed in ipairs({ math.huge, "inf", 0 / 0 }) do
+        local started = pns.report({ state = "done", detail = "overseer: build", elapsed = elapsed })
+
+        assert(started == false, "the report was refused for " .. tostring(elapsed))
+      end
+    end)
+
+    assert(#commands == 0, "nothing was spawned")
+  end,
+
+  ["warns once per exit code even when the engine's message differs each time"] = function()
+    local binary = vim.fn.tempname()
+    vim.fn.writefile({ "#!/bin/sh", 'echo "engine failed in process $$" >&2', "exit 7" }, binary)
+    vim.fn.setfperm(binary, "rwx------")
+
+    local ok, notices = pcall(notices_from, { binary = binary }, function()
+      assert(pns.report({ state = "done", detail = "overseer: build", elapsed = 1 }))
+      assert(pns.report({ state = "done", detail = "overseer: test", elapsed = 1 }))
+    end)
+    vim.fn.delete(binary)
+
+    assert(ok, notices)
+    assert(#notices == 1, "one warning for two differently worded failures, not " .. #notices)
+    assert(notices[1]:find("exited 7", 1, true), "the warning names the exit code: " .. notices[1])
+  end,
+
   ["refuses a negative duration"] = function()
     local commands = captured({}, function()
       local started = pns.report({ state = "done", detail = "overseer: build", elapsed = -1 })
