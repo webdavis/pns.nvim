@@ -63,6 +63,13 @@ Three tools have a built-in integration. Each reports once, timed by the tool's 
 finish events, on a monotonic clock so a machine that changes its time mid-build cannot produce a
 nonsense duration.
 
+Only the xcodebuild integration arms itself: xcodebuild.nvim announces its progress through `User`
+autocommands, so listening needs nothing from it and costs nothing while it is idle. overseer and
+neotest each read their list of components or consumers once, inside their own `setup`, so the plugin
+does not write itself into those lists. Doing that would either lose a race with their `setup` or
+overwrite a choice you made there. You name the integration in their configuration instead, as shown
+below.
+
 ### overseer.nvim
 
 A component. overseer resolves a component by name off the runtimepath, so add `"pns.report"` to the
@@ -117,7 +124,7 @@ results are ignored while they are still streaming in, so a run is reported once
 One process per report, spawned with argv rather than a shell string, and never waited on:
 
 ```
-pns --producer nvim --state done --project dotfiles --detail "overseer: just test-unit" --elapsed 42s --pane %7
+pns send --producer nvim --state done --project dotfiles --detail "overseer: just test-unit" --elapsed 42s --pane %7
 ```
 
 `--project` and `--pane` are left out when there is nothing to put in them, since an empty pane id is
@@ -177,6 +184,16 @@ nvim --headless --clean -l tests/run.lua
 
 `--clean` matters. None of the three host plugins is on the runtimepath, and none needs to be: each
 integration is driven by exactly what its host would pass it.
+
+Name one spec to run only that file:
+
+```bash
+nvim --headless --clean -l tests/run.lua report_spec
+```
+
+Each `tests/*_spec.lua` returns a table of `["what it does"] = function() ... end` cases that assert
+with plain `assert`, with no plenary or busted. The runner reports them in sorted order, and fails
+when no spec matches or a spec returns no cases.
 
 ## License
 

@@ -1,18 +1,6 @@
--- The one public call: what it puts on the engine's command line, what it
--- refuses before spawning anything, and what it says when the spawn fails.
---
--- The argv cases substitute `vim.system` and read the command back. The two
--- failure cases do not: a binary that is not there and a binary that exits
--- non-zero are both answered by the operating system, and a fake would only
--- pin what this file believes about them.
-
 local pns = require("pns")
 
---- Run `body` with `vim.system` and `vim.notify` recorded rather than real,
---- and with the options restored afterwards however it ends.
----@return string[][] commands
----@return string[] notices
-local function captured(options, body)
+local function fake_spawns(options, body)
   local real_system, real_notify, real_options = vim.system, vim.notify, pns.options
   local commands, notices = {}, {}
 
@@ -36,9 +24,17 @@ local function captured(options, body)
   return commands, notices
 end
 
---- The same, with the real `vim.system` left alone.
----@return string[] notices
-local function notices_from(options, body)
+local function wait_for_a_notice_from_the_event_loop(notices)
+  vim.wait(3000, function()
+    return #notices > 0
+  end)
+end
+
+local function give_a_second_notice_time_to_arrive()
+  vim.wait(150)
+end
+
+local function notices_from_real_spawns(options, body)
   local real_notify, real_options = vim.notify, pns.options
   local notices = {}
 
@@ -49,13 +45,8 @@ local function notices_from(options, body)
 
   local ok, err = pcall(body)
 
-  -- The engine's own exit arrives on the event loop, so the notice cannot be
-  -- read until the loop has run. The second wait is what proves the SECOND
-  -- failure stayed quiet rather than merely arriving late.
-  vim.wait(3000, function()
-    return #notices > 0
-  end)
-  vim.wait(150)
+  wait_for_a_notice_from_the_event_loop(notices)
+  give_a_second_notice_time_to_arrive()
 
   vim.notify, pns.options = real_notify, real_options
 
@@ -73,9 +64,7 @@ local function assert_command(actual, expected)
   )
 end
 
---- Set `HERDR_PANE_ID` for the duration of `body`, or unset it when `pane` is
---- nil, and put back whatever the environment had.
-local function with_pane(pane, body)
+local function with_herdr_pane_id(pane, body)
   local real = vim.env.HERDR_PANE_ID
   vim.env.HERDR_PANE_ID = pane
 
@@ -90,7 +79,7 @@ end
 
 return {
   ["builds the engine's command line for a finished task"] = function()
-    local commands = captured({ binary = "pns", agent = "nvim", project = "dotfiles", pane = "%7" }, function()
+    local commands = fake_spawns({ binary = "pns", agent = "nvim", project = "dotfiles", pane = "%7" }, function()
       pns.report({ state = "done", detail = "overseer: build", elapsed = 42 })
     end)
 
@@ -114,7 +103,7 @@ return {
   end,
 
   ["carries a failure through as the failed state"] = function()
-    local commands = captured({ project = "dotfiles", pane = "%7" }, function()
+    local commands = fake_spawns({ project = "dotfiles", pane = "%7" }, function()
       pns.report({ state = "failed", detail = "neotest: init_spec.lua", elapsed = 7 })
     end)
 
@@ -137,8 +126,8 @@ return {
   end,
 
   ["leaves out the pane and the project when there are none"] = function()
-    with_pane(nil, function()
-      local commands = captured({ project = "" }, function()
+    with_herdr_pane_id(nil, function()
+      local commands = fake_spawns({ project = "" }, function()
         pns.report({ state = "done", detail = "overseer: build", elapsed = 42 })
       end)
 
@@ -158,8 +147,8 @@ return {
   end,
 
   ["defaults the project to the working directory and the pane to the environment"] = function()
-    with_pane("%12", function()
-      local commands = captured({}, function()
+    with_herdr_pane_id("%12", function()
+      local commands = fake_spawns({}, function()
         pns.report({ state = "done", detail = "overseer: build", elapsed = 1 })
       end)
 
@@ -170,8 +159,8 @@ return {
   end,
 
   ["prefers the report's own project and pane over every default"] = function()
-    with_pane("%12", function()
-      local commands = captured({ project = "from-setup", pane = "%99" }, function()
+    with_herdr_pane_id("%12", function()
+      local commands = fake_spawns({ project = "from-setup", pane = "%99" }, function()
         pns.report({ state = "done", detail = "overseer: build", elapsed = 1, project = "from-call", pane = "%1" })
       end)
 
@@ -182,7 +171,7 @@ return {
   end,
 
   ["expands a tilde in the binary, which vim.system never would"] = function()
-    local commands = captured({ binary = "~/.local/libexec/pns/pns", project = "dotfiles" }, function()
+    local commands = fake_spawns({ binary = "~/.local/libexec/pns/pns", project = "dotfiles" }, function()
       pns.report({ state = "done", detail = "overseer: build", elapsed = 1 })
     end)
 
@@ -194,7 +183,7 @@ return {
   end,
 
   ["rounds a fractional duration down to whole seconds"] = function()
-    local commands = captured({ project = "dotfiles" }, function()
+    local commands = fake_spawns({ project = "dotfiles" }, function()
       pns.report({ state = "done", detail = "overseer: build", elapsed = 42.9 })
     end)
 
@@ -202,7 +191,7 @@ return {
   end,
 
   ["refuses a duration that is not a number, and spawns nothing"] = function()
-    local commands, notices = captured({}, function()
+    local commands, notices = fake_spawns({}, function()
       local started, reason = pns.report({ state = "done", detail = "overseer: build", elapsed = "soon" })
 
       assert(started == false, "the report was refused")
@@ -214,8 +203,44 @@ return {
     assert(notices[1]:find("elapsed", 1, true), "the warning names the field: " .. notices[1])
   end,
 
+  ["accepts a duration given as a string of seconds"] = function()
+    local commands = fake_spawns({ project = "dotfiles" }, function()
+      assert(pns.report({ state = "done", detail = "overseer: build", elapsed = "42" }))
+    end)
+
+    assert(commands[1][12] == "42s", "the string was read as seconds: " .. tostring(commands[1][12]))
+  end,
+
+  ["refuses an infinite or not-a-number duration"] = function()
+    local commands = fake_spawns({}, function()
+      for _, elapsed in ipairs({ math.huge, "inf", 0 / 0 }) do
+        local started = pns.report({ state = "done", detail = "overseer: build", elapsed = elapsed })
+
+        assert(started == false, "the report was refused for " .. tostring(elapsed))
+      end
+    end)
+
+    assert(#commands == 0, "nothing was spawned")
+  end,
+
+  ["warns once per exit code even when the engine's message differs each time"] = function()
+    local binary = vim.fn.tempname()
+    vim.fn.writefile({ "#!/bin/sh", 'echo "engine failed in process $$" >&2', "exit 7" }, binary)
+    vim.fn.setfperm(binary, "rwx------")
+
+    local ok, notices = pcall(notices_from_real_spawns, { binary = binary }, function()
+      assert(pns.report({ state = "done", detail = "overseer: build", elapsed = 1 }))
+      assert(pns.report({ state = "done", detail = "overseer: test", elapsed = 1 }))
+    end)
+    vim.fn.delete(binary)
+
+    assert(ok, notices)
+    assert(#notices == 1, "one warning for two differently worded failures, not " .. #notices)
+    assert(notices[1]:find("exited 7", 1, true), "the warning names the exit code: " .. notices[1])
+  end,
+
   ["refuses a negative duration"] = function()
-    local commands = captured({}, function()
+    local commands = fake_spawns({}, function()
       local started = pns.report({ state = "done", detail = "overseer: build", elapsed = -1 })
 
       assert(started == false, "the report was refused")
@@ -225,7 +250,7 @@ return {
   end,
 
   ["refuses a state the engine does not know"] = function()
-    local commands, notices = captured({}, function()
+    local commands, notices = fake_spawns({}, function()
       local started, reason = pns.report({ state = "running", detail = "overseer: build", elapsed = 1 })
 
       assert(started == false, "the report was refused")
@@ -238,7 +263,7 @@ return {
 
   ["warns once when the binary is not there, however many tasks finish"] = function()
     local missing = "pns-nvim-no-such-binary-77e1"
-    local notices = notices_from({ binary = missing }, function()
+    local notices = notices_from_real_spawns({ binary = missing }, function()
       local started, reason = pns.report({ state = "done", detail = "overseer: build", elapsed = 1 })
 
       assert(started == false, "the report was refused")
@@ -253,9 +278,8 @@ return {
   end,
 
   ["warns once when the engine exits non-zero, however many tasks finish"] = function()
-    -- `false` exits 1 whatever it is handed, which is the failing engine this
-    -- case is about without needing one.
-    local notices = notices_from({ binary = "false" }, function()
+    local binary_that_always_exits_1 = "false"
+    local notices = notices_from_real_spawns({ binary = binary_that_always_exits_1 }, function()
       assert(pns.report({ state = "done", detail = "overseer: build", elapsed = 1 }))
       assert(pns.report({ state = "done", detail = "overseer: test", elapsed = 1 }))
     end)

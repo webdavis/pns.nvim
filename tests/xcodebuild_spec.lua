@@ -1,0 +1,128 @@
+local harness = require("integration_harness")
+local xcodebuild = require("pns.integrations.xcodebuild")
+
+local reports_requested, assert_report = harness.reports_requested, harness.assert_report
+
+return {
+  ["xcodebuild is armed once however many times setup runs"] = function()
+    local pns = require("pns")
+    local real_xcodebuild, real_options = package.loaded["xcodebuild"], pns.options
+    package.loaded["xcodebuild"] = {}
+
+    local ok, err = pcall(function()
+      pns.setup()
+      pns.setup()
+
+      local autocommands = vim.api.nvim_get_autocmds({ group = xcodebuild.GROUP })
+      assert(#autocommands == 4, "four autocommands after two setups, not " .. #autocommands)
+    end)
+
+    package.loaded["xcodebuild"], pns.options = real_xcodebuild, real_options
+    pcall(vim.api.nvim_del_augroup_by_name, xcodebuild.GROUP)
+
+    if not ok then
+      error(err, 0)
+    end
+  end,
+
+  ["xcodebuild stays unarmed when xcodebuild.nvim is not installed"] = function()
+    assert(xcodebuild.arm() == false, "arming reported success without xcodebuild.nvim")
+    assert(
+      not pcall(vim.api.nvim_get_autocmds, { group = xcodebuild.GROUP }),
+      "the autocommand group exists without xcodebuild.nvim"
+    )
+  end,
+
+  ["xcodebuild reports a plain build from started to finished"] = function()
+    local reports = reports_requested(function(advance_seconds)
+      xcodebuild.build_started()
+      advance_seconds(95)
+      xcodebuild.build_finished({ data = { forTesting = false, success = true, cancelled = false } })
+    end)
+
+    assert_report(reports[1], { state = "done", detail = "xcodebuild: build", elapsed = 95 })
+  end,
+
+  ["xcodebuild reports a build that failed as failed"] = function()
+    local reports = reports_requested(function(advance_seconds)
+      xcodebuild.build_started()
+      advance_seconds(8)
+      xcodebuild.build_finished({ data = { forTesting = false, success = false, cancelled = false } })
+    end)
+
+    assert_report(reports[1], { state = "failed", detail = "xcodebuild: build", elapsed = 8 })
+  end,
+
+  ["xcodebuild says nothing about a build the operator cancelled"] = function()
+    local reports = reports_requested(function(advance_seconds)
+      xcodebuild.build_started()
+      advance_seconds(40)
+      xcodebuild.build_finished({ data = { forTesting = true, success = false, cancelled = true } })
+    end)
+
+    assert(#reports == 0, "a cancelled build reported nothing, not " .. #reports)
+  end,
+
+  ["xcodebuild folds a test run's build into one report covering both"] = function()
+    local reports = reports_requested(function(advance_seconds)
+      xcodebuild.build_started()
+      advance_seconds(30)
+      xcodebuild.build_finished({ data = { forTesting = true, success = true, cancelled = false } })
+      xcodebuild.tests_started()
+      advance_seconds(12)
+      xcodebuild.tests_finished({ data = { passedCount = 40, failedCount = 0, cancelled = false } })
+    end)
+
+    assert(#reports == 1, "one report for one keystroke, not " .. #reports)
+    assert_report(reports[1], { state = "done", detail = "xcodebuild: tests", elapsed = 42 })
+  end,
+
+  ["xcodebuild reports the build when a test run cannot get past it"] = function()
+    local reports = reports_requested(function(advance_seconds)
+      xcodebuild.build_started()
+      advance_seconds(30)
+      xcodebuild.build_finished({ data = { forTesting = true, success = false, cancelled = false } })
+    end)
+
+    assert_report(reports[1], { state = "failed", detail = "xcodebuild: build", elapsed = 30 })
+  end,
+
+  ["xcodebuild reports a test run with a failure as failed"] = function()
+    local reports = reports_requested(function(advance_seconds)
+      xcodebuild.tests_started()
+      advance_seconds(17)
+      xcodebuild.tests_finished({ data = { passedCount = 38, failedCount = 2, cancelled = false } })
+    end)
+
+    assert_report(reports[1], { state = "failed", detail = "xcodebuild: tests", elapsed = 17 })
+  end,
+
+  ["xcodebuild says nothing about a finish it never saw start"] = function()
+    local reports = reports_requested(function()
+      xcodebuild.tests_finished({ data = { passedCount = 1, failedCount = 0, cancelled = false } })
+      xcodebuild.build_finished({ data = { forTesting = false, success = true, cancelled = false } })
+    end)
+
+    assert(#reports == 0, "an unpaired finish reported nothing, not " .. #reports)
+  end,
+
+  ["xcodebuild lets a new build supersede a test start it carried forward"] = function()
+    local reports = reports_requested(function(advance_seconds)
+      xcodebuild.build_started()
+      advance_seconds(300)
+      xcodebuild.build_finished({ data = { forTesting = true, success = true, cancelled = false } })
+
+      xcodebuild.build_started()
+      advance_seconds(5)
+      xcodebuild.build_finished({ data = { forTesting = false, success = true, cancelled = false } })
+
+      xcodebuild.tests_started()
+      advance_seconds(3)
+      xcodebuild.tests_finished({ data = { passedCount = 1, failedCount = 0, cancelled = false } })
+    end)
+
+    assert(#reports == 2, "the build and the test run, not " .. #reports)
+    assert_report(reports[1], { state = "done", detail = "xcodebuild: build", elapsed = 5 })
+    assert_report(reports[2], { state = "done", detail = "xcodebuild: tests", elapsed = 3 })
+  end,
+}

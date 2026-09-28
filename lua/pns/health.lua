@@ -1,20 +1,7 @@
--- `:checkhealth pns`
---
--- The plugin and the engine are separate programs on separate release
--- schedules, so the flags one emits and the flags the other accepts can drift.
--- The handshake is here rather than in `report`: a version probe on every
--- finished task would spawn a second process to answer a question whose answer
--- cannot change while Neovim is running, and reporting is the path that has to
--- stay out of the way.
-
 local M = {}
 
---- How long to wait for the engine to state its version. Generous: this runs
---- when the operator asked for a health report, not on a hot path.
-local VERSION_TIMEOUT_MS = 5000
+local VERSION_PROBE_TIMEOUT_MS = 5000
 
---- The three plugins with a built-in integration, and where each one is named
---- so that it runs.
 local INTEGRATIONS = {
   {
     module = "overseer",
@@ -30,14 +17,6 @@ local INTEGRATIONS = {
   },
 }
 
---- Pull a version out of whatever the engine printed.
----
---- Deliberately loose about the shape of the line: `pns 0.2.0`, `0.2.0` and
---- `pns version 0.2` all answer the same question, and pinning the plugin to
---- one spelling of it would turn a cosmetic change in the engine's output into
---- a health failure.
----@param output string?
----@return integer[]? version as major, minor, patch
 function M.parse_version(output)
   local major, minor, patch = tostring(output or ""):match("(%d+)%.(%d+)%.?(%d*)")
   if not major then
@@ -47,10 +26,6 @@ function M.parse_version(output)
   return { tonumber(major), tonumber(minor), tonumber(patch) or 0 }
 end
 
---- Whether `found` is `wanted` or newer.
----@param found integer[]
----@param wanted integer[]
----@return boolean
 function M.at_least(found, wanted)
   for position = 1, math.max(#found, #wanted) do
     local one, other = found[position] or 0, wanted[position] or 0
@@ -62,22 +37,14 @@ function M.at_least(found, wanted)
   return true
 end
 
---- Ask the engine for its version, blocking until it answers.
----
---- Usage text counts: an engine too old to know `--version` prints its help and
---- exits non-zero, which is itself the answer that it predates the handshake.
----@param binary string
----@return integer code
----@return string output stdout, or stderr when stdout was empty
-local function probe(binary)
-  local result = vim.system({ binary, "--version" }, { text = true }):wait(VERSION_TIMEOUT_MS)
-  local output = result.stdout or ""
-
-  if output == "" then
-    output = result.stderr or ""
+local function probe_version(binary)
+  local result = vim.system({ binary, "--version" }, { text = true }):wait(VERSION_PROBE_TIMEOUT_MS)
+  local stdout_or_stderr = result.stdout or ""
+  if stdout_or_stderr == "" then
+    stdout_or_stderr = result.stderr or ""
   end
 
-  return result.code, output
+  return result.code, stdout_or_stderr
 end
 
 local function check_binary()
@@ -100,7 +67,7 @@ local function check_binary()
     return
   end
 
-  local spawned, code, output = pcall(probe, binary)
+  local spawned, code, output = pcall(probe_version, binary)
   if not spawned then
     vim.health.error(("%s could not be run: %s"):format(binary, tostring(code)))
     return
