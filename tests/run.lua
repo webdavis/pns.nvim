@@ -12,7 +12,12 @@ local tests_dir = arg[0]:match("(.*)/") or "."
 local project_root = tests_dir .. "/.."
 local only = arg[1]
 
-package.path = ("%s/lua/?.lua;%s/lua/?/init.lua;%s"):format(project_root, project_root, package.path)
+package.path = table.concat({
+  project_root .. "/lua/?.lua",
+  project_root .. "/lua/?/init.lua",
+  tests_dir .. "/?.lua",
+  package.path,
+}, ";")
 
 local spec_files
 if only then
