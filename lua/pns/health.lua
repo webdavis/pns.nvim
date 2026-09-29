@@ -54,7 +54,7 @@ local function check_binary()
   if vim.fn.executable(binary) ~= 1 then
     vim.health.error(("the pns binary %s was not found"):format(binary), {
       "Install pns, or set the binary option to where it lives.",
-      'For example require("pns").setup({ binary = "~/.local/libexec/pns/pns" }).',
+      'For example require("pns").setup({ binary = "~/.cargo/bin/pns" }).',
     })
     return
   end

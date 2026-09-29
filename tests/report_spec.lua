@@ -111,12 +111,12 @@ return {
   end,
 
   ["expands a tilde in the binary, which vim.system never would"] = function()
-    local commands = fake_spawns({ binary = "~/.local/libexec/pns/pns", project = "dotfiles" }, function()
+    local commands = fake_spawns({ binary = "~/.cargo/bin/pns", project = "dotfiles" }, function()
       pns.report({ state = "done", detail = "overseer: build", elapsed = 1 })
     end)
 
     assert(
-      commands[1][1] == vim.fs.normalize("~/.local/libexec/pns/pns"),
+      commands[1][1] == vim.fs.normalize("~/.cargo/bin/pns"),
       "the binary was expanded: " .. commands[1][1]
     )
     assert(not commands[1][1]:find("~", 1, true), "no tilde survived")
