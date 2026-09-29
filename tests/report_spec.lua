@@ -19,7 +19,7 @@ end
 
 return {
   ["builds the engine's command line for a finished task"] = function()
-    local commands = fake_spawns({ binary = "pns", agent = "nvim", project = "dotfiles", pane = "%7" }, function()
+    local commands = fake_spawns({ binary = "pns", producer = "editor", project = "dotfiles", pane = "%7" }, function()
       pns.report({ state = "done", detail = "overseer: build", elapsed = 42 })
     end)
 
@@ -28,7 +28,7 @@ return {
       "pns",
       "send",
       "--producer",
-      "nvim",
+      "editor",
       "--state",
       "done",
       "--project",

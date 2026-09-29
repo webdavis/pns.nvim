@@ -102,8 +102,17 @@ local function check_integrations()
   end
 end
 
+local function check_options()
+  local pns = require("pns")
+  local retired = pns.retired_option_warning(pns.options)
+  if retired then
+    vim.health.warn(retired)
+  end
+end
+
 function M.check()
   vim.health.start("pns.nvim")
+  check_options()
   check_binary()
   check_integrations()
 end
