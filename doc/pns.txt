@@ -35,7 +35,10 @@ so one program owns the rule instead of every producer keeping a copy.
 - Neovim with |vim.system()|, |vim.uv|, |vim.fs| and |vim.health|. Developed
   and tested on 0.12.5.
 - pns 0.2.0 or newer, with `--version`, `--elapsed` and the `send` subcommand.
-  See |pns-handshake|.
+  See |pns-handshake|. Install it with: >sh
+
+      cargo install --locked --git https://github.com/webdavis/pns pns
+<
 - Optionally overseer.nvim, xcodebuild.nvim and neotest. Each has a built-in
   integration, and each one is inert when its plugin is not installed.
 
@@ -52,11 +55,12 @@ With lazy.nvim: >lua
 `opts = {}` is enough. It calls |pns.setup()|, which is what arms the
 xcodebuild integration.
 
-On a machine where pns is not on `PATH`, name it: >lua
+`cargo install` puts pns in `~/.cargo/bin`. When Neovim's `PATH` does not
+include that folder, name the binary: >lua
 
     {
       "webdavis/pns.nvim",
-      opts = { binary = "~/.local/libexec/pns/pns" },
+      opts = { binary = "~/.cargo/bin/pns" },
     }
 <
 ==============================================================================
@@ -66,8 +70,8 @@ On a machine where pns is not on `PATH`, name it: >lua
 binary                  The engine to run, `"pns"` by default. A bare name is
                         looked up on `PATH`; a path is expanded, so `~` works.
 
-                                                           *pns-option-agent*
-agent                   The producer name pns records against every report,
+                                                        *pns-option-producer*
+producer                The producer name pns records against every report,
                         `"nvim"` by default.
 
                                                          *pns-option-project*

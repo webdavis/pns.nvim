@@ -15,8 +15,9 @@ every producer keeping a copy.
 ## Requirements
 
 - Neovim with `vim.system`, `vim.uv`, `vim.fs` and `vim.health`. Developed and tested on 0.12.5.
-- pns 0.2.0 or newer, with `--version`, `--elapsed` and the `send` subcommand.
-  See [the version handshake](#the-version-handshake) below.
+- pns 0.2.0 or newer, with `--version`, `--elapsed` and the `send` subcommand, installed with
+  `cargo install --locked --git https://github.com/webdavis/pns pns`. See
+  [the version handshake](#the-version-handshake) below.
 - Optionally [overseer.nvim](https://github.com/stevearc/overseer.nvim),
   [xcodebuild.nvim](https://github.com/wojciech-kulik/xcodebuild.nvim) and
   [neotest](https://github.com/nvim-neotest/neotest). Each has a built-in integration, and each one
@@ -35,24 +36,25 @@ With [lazy.nvim](https://github.com/folke/lazy.nvim):
 
 `opts = {}` is enough. It calls `setup()`, which is what arms the xcodebuild integration.
 
-On a machine where pns is not on `PATH`, name it:
+`cargo install` puts pns in `~/.cargo/bin`. When Neovim's `PATH` does not include that folder, name
+the binary:
 
 ```lua
 {
   "webdavis/pns.nvim",
-  opts = { binary = "~/.local/libexec/pns/pns" },
+  opts = { binary = "~/.cargo/bin/pns" },
 }
 ```
 
 ## Options
 
-| Option            | Default   | What it does                                              |
-| ----------------- | --------- | --------------------------------------------------------- |
+| Option            | Default   | What it does                                                           |
+| ----------------- | --------- | ---------------------------------------------------------------------- |
 | `binary`          | `"pns"`   | The engine to run. A bare name is found on `PATH`, a path is expanded. |
-| `agent`           | `"nvim"`  | The producer name pns records against every report.       |
-| `project`         | unset     | Overrides the working directory's basename.               |
-| `pane`            | unset     | Overrides `$HERDR_PANE_ID`.                               |
-| `minimum_version` | `"0.2.0"` | The oldest pns `:checkhealth pns` accepts.                |
+| `producer`        | `"nvim"`  | The producer name pns records against every report.                    |
+| `project`         | unset     | Overrides the working directory's basename.                            |
+| `pane`            | unset     | Overrides `$HERDR_PANE_ID`.                                            |
+| `minimum_version` | `"0.2.0"` | The oldest pns `:checkhealth pns` accepts.                             |
 
 `project` and `pane` are read when a report is made rather than when `setup` runs, so one Neovim
 serving several directories still names the right one.
