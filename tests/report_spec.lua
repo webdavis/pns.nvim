@@ -115,10 +115,7 @@ return {
       pns.report({ state = "done", detail = "overseer: build", elapsed = 1 })
     end)
 
-    assert(
-      commands[1][1] == vim.fs.normalize("~/.cargo/bin/pns"),
-      "the binary was expanded: " .. commands[1][1]
-    )
+    assert(commands[1][1] == vim.fs.normalize("~/.cargo/bin/pns"), "the binary was expanded: " .. commands[1][1])
     assert(not commands[1][1]:find("~", 1, true), "no tilde survived")
   end,
 
