@@ -1,68 +1,8 @@
+local harness = require("spawn_harness")
 local pns = require("pns")
 
-local function fake_spawns(options, body)
-  local real_system, real_notify, real_options = vim.system, vim.notify, pns.options
-  local commands, notices = {}, {}
-
-  pns.options = vim.tbl_extend("force", vim.deepcopy(real_options), options or {})
-  vim.system = function(cmd)
-    commands[#commands + 1] = cmd
-    return {}
-  end
-  vim.notify = function(message)
-    notices[#notices + 1] = message
-  end
-
-  local ok, err = pcall(body)
-
-  vim.system, vim.notify, pns.options = real_system, real_notify, real_options
-
-  if not ok then
-    error(err, 0)
-  end
-
-  return commands, notices
-end
-
-local function wait_for_a_notice_from_the_event_loop(notices)
-  vim.wait(3000, function()
-    return #notices > 0
-  end)
-end
-
-local function give_a_second_notice_time_to_arrive()
-  vim.wait(150)
-end
-
-local function notices_from_real_spawns(options, body)
-  local real_notify, real_options = vim.notify, pns.options
-  local notices = {}
-
-  pns.options = vim.tbl_extend("force", vim.deepcopy(real_options), options or {})
-  vim.notify = function(message)
-    notices[#notices + 1] = message
-  end
-
-  local ok, err = pcall(body)
-
-  wait_for_a_notice_from_the_event_loop(notices)
-  give_a_second_notice_time_to_arrive()
-
-  vim.notify, pns.options = real_notify, real_options
-
-  if not ok then
-    error(err, 0)
-  end
-
-  return notices
-end
-
-local function assert_command(actual, expected)
-  assert(
-    vim.deep_equal(actual, expected),
-    ("argv was %s\nexpected  %s"):format(vim.inspect(actual), vim.inspect(expected))
-  )
-end
+local fake_spawns, notices_from_real_spawns, assert_command =
+  harness.fake_spawns, harness.notices_from_real_spawns, harness.assert_command
 
 local function with_herdr_pane_id(pane, body)
   local real = vim.env.HERDR_PANE_ID
@@ -79,7 +19,7 @@ end
 
 return {
   ["builds the engine's command line for a finished task"] = function()
-    local commands = fake_spawns({ binary = "pns", agent = "nvim", project = "dotfiles", pane = "%7" }, function()
+    local commands = fake_spawns({ binary = "pns", producer = "editor", project = "dotfiles", pane = "%7" }, function()
       pns.report({ state = "done", detail = "overseer: build", elapsed = 42 })
     end)
 
@@ -88,7 +28,7 @@ return {
       "pns",
       "send",
       "--producer",
-      "nvim",
+      "editor",
       "--state",
       "done",
       "--project",
@@ -171,14 +111,11 @@ return {
   end,
 
   ["expands a tilde in the binary, which vim.system never would"] = function()
-    local commands = fake_spawns({ binary = "~/.local/libexec/pns/pns", project = "dotfiles" }, function()
+    local commands = fake_spawns({ binary = "~/.cargo/bin/pns", project = "dotfiles" }, function()
       pns.report({ state = "done", detail = "overseer: build", elapsed = 1 })
     end)
 
-    assert(
-      commands[1][1] == vim.fs.normalize("~/.local/libexec/pns/pns"),
-      "the binary was expanded: " .. commands[1][1]
-    )
+    assert(commands[1][1] == vim.fs.normalize("~/.cargo/bin/pns"), "the binary was expanded: " .. commands[1][1])
     assert(not commands[1][1]:find("~", 1, true), "no tilde survived")
   end,
 
