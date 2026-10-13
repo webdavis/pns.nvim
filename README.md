@@ -195,6 +195,13 @@ Each `tests/*_spec.lua` returns a table of `["what it does"] = function() ... en
 with plain `assert`, with no plenary or busted. The runner reports them in sorted order, and fails
 when no spec matches or a spec returns no cases.
 
+CI runs the tests and these two checks on every pull request:
+
+```bash
+luacheck .
+stylua --check .
+```
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
