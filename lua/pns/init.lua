@@ -50,7 +50,7 @@ function M.send_argv(binary, state, elapsed, report)
   local argv = { binary, "send" }
   append_unless_empty(argv, "--producer", M.options.producer)
   append_unless_empty(argv, "--state", state)
-  append_unless_empty(argv, "--project", report.project or M.options.project or vim.fs.basename(vim.uv.cwd() or ""))
+  append_unless_empty(argv, "--project", report.project or M.options.project)
   append_unless_empty(argv, "--detail", report.detail)
   append_unless_empty(argv, "--elapsed", math.floor(elapsed) .. "s")
   append_unless_empty(argv, "--pane", report.pane or M.options.pane or vim.env.HERDR_PANE_ID)
