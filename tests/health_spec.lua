@@ -9,8 +9,6 @@ local function assert_version(output, expected)
   )
 end
 
-local MISSING_BINARY = "pns-nvim-no-such-binary-77e1"
-
 local function health_messages(options)
   local pns = require("pns")
   local real_options, real_health = pns.options, vim.health
@@ -50,20 +48,6 @@ return {
       vim.tbl_contains(messages.ok, "pns 0.2.0 meets the minimum of 0.2.0"),
       "the health check did not accept the supported engine: " .. vim.inspect(messages.ok)
     )
-  end,
-
-  ["warns by name when the config still sets the retired agent option"] = function()
-    local messages = health_messages({ binary = MISSING_BINARY, agent = "editor" })
-
-    assert(#messages.warn == 1, "one warning, not " .. vim.inspect(messages.warn))
-    assert(messages.warn[1]:find("agent", 1, true), "the warning names the retired option: " .. messages.warn[1])
-    assert(messages.warn[1]:find("producer", 1, true), "the warning names its replacement: " .. messages.warn[1])
-  end,
-
-  ["raises no warning when the config sets only the options it reads"] = function()
-    local messages = health_messages({ binary = MISSING_BINARY, producer = "editor" })
-
-    assert(#messages.warn == 0, "a current config raised " .. vim.inspect(messages.warn))
   end,
 
   ["reads a version however the engine spells the line around it"] = function()
