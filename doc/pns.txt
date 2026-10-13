@@ -9,7 +9,7 @@ CONTENTS                                                        *pns-contents*
   4. Options ............ |pns-options|
   5. Integrations ....... |pns-integrations|
   6. What reaches pns ... |pns-argv|
-  7. Version handshake .. |pns-handshake|
+  7. Flag handshake ..... |pns-handshake|
   8. Lua API ............ |pns-api|
   9. Health ............. |pns-health|
 
@@ -34,8 +34,8 @@ so one program owns the rule instead of every producer keeping a copy.
 
 - Neovim with |vim.system()|, |vim.uv|, |vim.fs| and |vim.health|. Developed
   and tested on 0.12.5.
-- pns 0.2.0 or newer, with `--version`, `--elapsed` and the `send` subcommand.
-  See |pns-handshake|. Install it with: >sh
+- pns, with a `send` that takes every flag in |pns-argv|. |pns-handshake|
+  checks that for you. Install it with: >sh
 
       cargo install --locked --git https://github.com/webdavis/pns pns
 <
@@ -80,10 +80,6 @@ project                 Overrides the working directory's basename. Unset by
 
                                                             *pns-option-pane*
 pane                    Overrides `$HERDR_PANE_ID`. Unset by default.
-
-                                                 *pns-option-minimum_version*
-minimum_version         The oldest pns |:checkhealth| accepts, `"0.2.0"` by
-                        default. See |pns-handshake|.
 
 `project` and `pane` are read when a report is made rather than when
 |pns.setup()| runs, so one Neovim serving several directories still names the
@@ -171,21 +167,19 @@ cause. Each cause warns once for the life of the session, so a broken engine
 cannot turn every finished task into a fresh notification.
 
 ==============================================================================
-7. VERSION HANDSHAKE                                           *pns-handshake*
+7. FLAG HANDSHAKE                                              *pns-handshake*
 
 The plugin and the engine are separate programs on separate release
 schedules, so the flags one emits and the flags the other accepts can drift.
-The plugin declares the oldest pns it works against, |:checkhealth| reads
-`pns --version` and compares, and a mismatch is reported there rather than
-discovered as a rejected flag on every build.
+|:checkhealth| runs `pns send --help` and checks that every flag a report
+uses is on that page. A missing flag is named there rather than discovered as
+a refused report on every build.
 
-The default minimum is `0.2.0`, which supports `--version`, the producer
-flags above and the `send` subcommand every report now names. Set
-|pns-option-minimum_version| when you need to require a newer engine.
+The check takes its list of flags from the code that builds each report's
+command line, so a flag added there is checked from then on.
 
 The handshake runs only in the health check. Reporting never probes the
-engine's version, because the answer cannot change while Neovim is running
-and the reporting path has to stay out of the way.
+engine, because the reporting path has to stay out of the way.
 
 ==============================================================================
 8. LUA API                                                           *pns-api*
@@ -224,9 +218,8 @@ report({report})        Report one finished task. {report} is a table:
 ==============================================================================
 9. HEALTH                                                         *pns-health*
 
-`:checkhealth pns` reports whether the binary was found, what version it
-answered with, whether that meets |pns-option-minimum_version|, and for each
-of the three host plugins whether it is installed and how its integration is
-wired.
+`:checkhealth pns` reports whether the binary was found, whether `pns send`
+takes every flag a report uses, and for each of the three host plugins whether
+it is installed and how its integration is wired.
 
 vim:tw=78:ts=8:ft=help:norl:
