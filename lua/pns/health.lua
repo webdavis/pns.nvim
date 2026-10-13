@@ -1,6 +1,6 @@
 local M = {}
 
-local VERSION_PROBE_TIMEOUT_MS = 5000
+local HELP_PROBE_TIMEOUT_MS = 5000
 
 local INTEGRATIONS = {
   {
@@ -17,39 +17,31 @@ local INTEGRATIONS = {
   },
 }
 
-function M.parse_version(output)
-  local major, minor, patch = tostring(output or ""):match("(%d+)%.(%d+)%.?(%d*)")
-  if not major then
-    return nil
+local function flags_sent(binary)
+  local argv = require("pns").send_argv(binary, "done", 0, { project = "-", detail = "-", pane = "-" })
+  local flags = {}
+  for position = 3, #argv, 2 do
+    flags[#flags + 1] = argv[position]
   end
 
-  return { tonumber(major), tonumber(minor), tonumber(patch) or 0 }
+  return flags
 end
 
-function M.at_least(found, wanted)
-  for position = 1, math.max(#found, #wanted) do
-    local one, other = found[position] or 0, wanted[position] or 0
-    if one ~= other then
-      return one > other
+local function probe_send_help(binary)
+  local result = vim.system({ binary, "send", "--help" }, { text = true }):wait(HELP_PROBE_TIMEOUT_MS)
+  local listed = {}
+  for line in (result.stdout or ""):gmatch("[^\n]+") do
+    local flag = line:match("^%s*(%-%-[%w%-]+)")
+    if flag then
+      listed[flag] = true
     end
   end
 
-  return true
-end
-
-local function probe_version(binary)
-  local result = vim.system({ binary, "--version" }, { text = true }):wait(VERSION_PROBE_TIMEOUT_MS)
-  local stdout_or_stderr = result.stdout or ""
-  if stdout_or_stderr == "" then
-    stdout_or_stderr = result.stderr or ""
-  end
-
-  return result.code, stdout_or_stderr
+  return result.code, listed
 end
 
 local function check_binary()
-  local options = require("pns").options
-  local binary = vim.fs.normalize(options.binary)
+  local binary = vim.fs.normalize(require("pns").options.binary)
 
   if vim.fn.executable(binary) ~= 1 then
     vim.health.error(("the pns binary %s was not found"):format(binary), {
@@ -61,33 +53,29 @@ local function check_binary()
 
   vim.health.ok(("the pns binary is %s"):format(binary))
 
-  local wanted = M.parse_version(options.minimum_version)
-  if not wanted then
-    vim.health.error(("minimum_version is not a version: %s"):format(vim.inspect(options.minimum_version)))
-    return
-  end
-
-  local spawned, code, output = pcall(probe_version, binary)
+  local spawned, code, listed = pcall(probe_send_help, binary)
   if not spawned then
     vim.health.error(("%s could not be run: %s"):format(binary, tostring(code)))
     return
   end
 
-  local found = code == 0 and M.parse_version(output) or nil
-  if not found then
-    vim.health.error(("%s did not state a version"):format(binary), {
-      ("This plugin needs pns %s or newer, which reports one."):format(options.minimum_version),
-      "An older pns answers --version with its usage text and a non-zero exit.",
+  if code ~= 0 then
+    vim.health.error(("%s send --help exited %d"):format(binary, code), {
+      "Upgrade pns. Every report goes through pns send.",
     })
     return
   end
 
-  local version = table.concat(found, ".")
-  if M.at_least(found, wanted) then
-    vim.health.ok(("pns %s meets the minimum of %s"):format(version, options.minimum_version))
+  local sent = flags_sent(binary)
+  local missing = vim.tbl_filter(function(flag)
+    return not listed[flag]
+  end, sent)
+
+  if #missing == 0 then
+    vim.health.ok(("pns send takes every flag a report uses: %s"):format(table.concat(sent, " ")))
   else
-    vim.health.error(("pns %s is older than the minimum of %s"):format(version, options.minimum_version), {
-      "Upgrade pns. Reports would be sent with flags this one rejects.",
+    vim.health.error(("pns send does not take %s"):format(table.concat(missing, " ")), {
+      "Upgrade pns. Until then it refuses every report this plugin sends.",
     })
   end
 end
@@ -102,17 +90,8 @@ local function check_integrations()
   end
 end
 
-local function check_options()
-  local pns = require("pns")
-  local retired = pns.retired_option_warning(pns.options)
-  if retired then
-    vim.health.warn(retired)
-  end
-end
-
 function M.check()
   vim.health.start("pns.nvim")
-  check_options()
   check_binary()
   check_integrations()
 end

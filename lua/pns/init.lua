@@ -5,7 +5,6 @@ M.options = {
   producer = "nvim",
   project = nil,
   pane = nil,
-  minimum_version = "0.2.0",
 }
 
 local warned_causes = {}
@@ -47,7 +46,7 @@ local function append_unless_empty(argv, flag, value)
   argv[#argv + 1] = tostring(value)
 end
 
-local function send_argv(binary, state, elapsed, report)
+function M.send_argv(binary, state, elapsed, report)
   local argv = { binary, "send" }
   append_unless_empty(argv, "--producer", M.options.producer)
   append_unless_empty(argv, "--state", state)
@@ -59,21 +58,8 @@ local function send_argv(binary, state, elapsed, report)
   return argv
 end
 
-function M.retired_option_warning(options)
-  if options.agent == nil then
-    return nil
-  end
-
-  return ("the agent option is no longer read; set producer = %s instead"):format(vim.inspect(options.agent))
-end
-
 function M.setup(opts)
   M.options = vim.tbl_extend("force", M.options, opts or {})
-
-  local retired = M.retired_option_warning(M.options)
-  if retired then
-    warn_once_per_cause("retired-option", retired)
-  end
 
   require("pns.integrations.xcodebuild").arm()
 end
@@ -94,7 +80,7 @@ function M.report(report)
   end
 
   local binary = vim.fs.normalize(M.options.binary)
-  local argv = send_argv(binary, state, elapsed, report)
+  local argv = M.send_argv(binary, state, elapsed, report)
 
   local spawned, spawn_error = pcall(vim.system, argv, { text = true }, function(out)
     if out.code ~= 0 then

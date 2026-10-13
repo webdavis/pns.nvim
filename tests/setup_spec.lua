@@ -12,17 +12,14 @@ return {
     assert(commands[1][4] == "nvim", "the default producer is nvim: " .. tostring(commands[1][4]))
   end,
 
-  ["warns once and keeps the default producer when setup is given the retired agent option"] = function()
+  ["ignores an option it does not read and says nothing about it"] = function()
     local commands, notices = fake_spawns({ project = "dotfiles" }, function()
-      pns.setup({ agent = "editor" })
       pns.setup({ agent = "editor" })
       pns.report({ state = "done", detail = "overseer: build", elapsed = 1 })
     end)
 
-    assert(commands[1][4] == "nvim", "the retired option was sent as the producer: " .. tostring(commands[1][4]))
-    assert(#notices == 1, "one warning for two setups, not " .. #notices)
-    assert(notices[1]:find("agent", 1, true), "the warning names the retired option: " .. notices[1])
-    assert(notices[1]:find("producer", 1, true), "the warning names its replacement: " .. notices[1])
+    assert(commands[1][4] == "nvim", "an unread option changed the producer: " .. tostring(commands[1][4]))
+    assert(#notices == 0, "an unread option raised " .. vim.inspect(notices))
   end,
 
   ["raises no warning when setup is given only the options it reads"] = function()
