@@ -86,15 +86,26 @@ return {
     end)
   end,
 
-  ["defaults the project to the working directory and the pane to the environment"] = function()
+  ["leaves the project for pns to name and defaults the pane to the environment"] = function()
     with_herdr_pane_id("%12", function()
       local commands = fake_spawns({}, function()
         pns.report({ state = "done", detail = "overseer: build", elapsed = 1 })
       end)
 
-      local argv = commands[1]
-      assert(argv[8] == vim.fs.basename(vim.uv.cwd()), "the project is the working directory's name: " .. argv[8])
-      assert(argv[14] == "%12", "the pane came from HERDR_PANE_ID: " .. tostring(argv[14]))
+      assert_command(commands[1], {
+        "pns",
+        "send",
+        "--producer",
+        "nvim",
+        "--state",
+        "done",
+        "--detail",
+        "overseer: build",
+        "--elapsed",
+        "1s",
+        "--pane",
+        "%12",
+      })
     end)
   end,
 

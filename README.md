@@ -52,7 +52,7 @@ the binary:
 | ----------------- | --------- | ---------------------------------------------------------------------- |
 | `binary`          | `"pns"`   | The engine to run. A bare name is found on `PATH`, a path is expanded. |
 | `producer`        | `"nvim"`  | The producer name pns records against every report.                    |
-| `project`         | unset     | Overrides the working directory's basename.                            |
+| `project`         | unset     | Overrides the project pns names from the working directory.            |
 | `pane`            | unset     | Overrides `$HERDR_PANE_ID`.                                            |
 
 `project` and `pane` are read when a report is made rather than when `setup` runs, so one Neovim
@@ -125,11 +125,13 @@ results are ignored while they are still streaming in, so a run is reported once
 One process per report, spawned with argv rather than a shell string, and never waited on:
 
 ```
-pns send --producer nvim --state done --project dotfiles --detail "overseer: just test-unit" --elapsed 42s --pane %7
+pns send --producer nvim --state done --detail "overseer: just test-unit" --elapsed 42s --pane %7
 ```
 
-`--project` and `--pane` are left out when there is nothing to put in them, since an empty pane id is
-a pane pns will never find. The other flags are always present.
+`--project` is passed only when a report or `setup` names one. Without it, pns names the project
+from the working directory the way its hooks do: the repository's name inside a git checkout, the
+directory's name outside one. `--pane` is left out when there is nothing to put in it, since an empty
+pane id is a pane pns will never find. The other flags are always present.
 
 The plugin hides neither kind of failure. A binary that is not there, and a binary that exits
 non-zero, each raise one `vim.notify` at `WARN` naming the cause. Each cause warns once for the life
